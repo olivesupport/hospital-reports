@@ -1,1 +1,56 @@
 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hospital Installation Reports</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .search-bar { padding: 10px; width: 300px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Hospital Installation Dashboard</h2>
+    <input type="text" id="searchInput" class="search-bar" placeholder="Search by Hospital or Batch...">
+    
+    <div id="table-container"></div>
+
+    <script>
+        // REPLACE THIS URL with your "Published to Web" CSV link
+        const public_spreadsheet_url = 'YOUR_GOOGLE_SHEET_CSV_URL_HERE';
+
+        function init() {
+            Papa.parse(public_spreadsheet_url, {
+                download: true,
+                header: true,
+                complete: showInfo
+            });
+        }
+
+        function showInfo(results) {
+            const data = results.data;
+            let table = `<table id="reportTable"><thead><tr>`;
+            
+            // Create Headers
+            Object.keys(data[0]).forEach(key => { table += `<th>${key}</th>`; });
+            table += `</tr></thead><tbody>`;
+
+            // Create Rows
+            data.forEach(row => {
+                table += `<tr>`;
+                Object.values(row).forEach(val => { table += `<td>${val}</td>`; });
+                table += `</tr>`;
+            });
+            table += `</tbody></table>`;
+            document.getElementById('table-container').innerHTML = table;
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
