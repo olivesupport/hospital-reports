@@ -6,79 +6,131 @@
     <title>Hospital Installation Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        :root { --primary: #007bff; --bg: #f8f9fa; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: var(--bg); }
-        .container { max-width: 1200px; margin: auto; }
+        :root { --primary: #007bff; --bg: #f4f7f6; --card-bg: #ffffff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); color: #333; }
+        .container { padding: 20px; max-width: 800px; margin: auto; }
         
-        /* Search & Suggestion UI */
-        .search-wrapper { position: relative; margin-bottom: 30px; }
+        /* Search Styling */
+        .search-wrapper { position: relative; margin-bottom: 20px; }
         #searchInput { 
-            width: 100%; padding: 15px; border: 2px solid #ddd; 
-            border-radius: 8px; font-size: 16px; box-sizing: border-box;
+            width: 100%; padding: 15px; border: 1px solid #ccc; 
+            border-radius: 12px; font-size: 16px; box-sizing: border-box;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         #suggestions {
             position: absolute; width: 100%; background: white; 
-            border: 1px solid #ddd; border-top: none; z-index: 1000;
-            max-height: 200px; overflow-y: auto; border-radius: 0 0 8px 8px;
+            z-index: 1000; border-radius: 0 0 12px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-        .suggestion-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .suggestion-item:hover { background: #f0f7ff; color: var(--primary); }
+        .suggestion-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
 
-        /* Table Styling */
-        .table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { background: var(--primary); color: white; padding: 15px; text-align: left; position: sticky; top: 0; }
-        td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 14px; }
-        tr:hover { background-color: #f1f1f1; }
+        /* List Styling */
+        .hospital-list-item { 
+            background: white; padding: 15px; margin-bottom: 10px; 
+            border-radius: 10px; display: flex; justify-content: space-between;
+            align-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Contact Card (Modal) */
+        #contactCardOverlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: flex-end;
+        }
+        .contact-card {
+            background: white; width: 100%; max-width: 500px; 
+            border-radius: 20px 20px 0 0; padding: 25px; 
+            box-sizing: border-box; position: relative;
+            max-height: 90vh; overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .card-header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; }
+        .card-row { margin-bottom: 15px; }
+        .label { font-size: 12px; color: #777; text-transform: uppercase; font-weight: bold; }
+        .value { font-size: 16px; color: #111; margin-top: 2px; }
+        .close-btn { 
+            background: #eee; border: none; padding: 10px 20px; 
+            border-radius: 8px; width: 100%; margin-top: 20px; cursor: pointer; font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🏥 Hospital Installation Directory</h2>
+    <h2 style="text-align:center;">🏥 Installation Reports</h2>
     
     <div class="search-wrapper">
-        <input type="text" id="searchInput" placeholder="Start typing hospital name..." autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Search Hospital Name..." autocomplete="off">
         <div id="suggestions"></div>
     </div>
 
-    <div class="table-container" id="table-container">
+    <div id="main-list">
+        </div>
+</div>
+
+<div id="contactCardOverlay">
+    <div class="contact-card" id="cardContent">
         </div>
 </div>
 
 <script>
-    const public_spreadsheet_url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ4Bew5KoEdw5IMcQWRhZGK4NvC0nJliPMvFFEts0MwQPCMSpu5mUYrHS0NFTO8k1DMtUcf5Pxy09-/pub?output=csv'; // ENSURE THIS IS THE .CSV LINK
+    const public_spreadsheet_url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQ4Bew5KoEdw5IMcQWRhZGK4NvC0nJliPMvFFEts0MwQPCMSpu5mUYrHS0NFTO8k1DMtUcf5Pxy09-/pub?output=csv'; 
     let reportData = [];
 
     async function init() {
         Papa.parse(public_spreadsheet_url, {
-            download: true,
-            header: true,
+            download: true, header: true,
             complete: function(results) {
-                // Filter out empty rows and SORT Alphabetically by Hospital Name
                 reportData = results.data.filter(row => row['Hospital Name'])
                     .sort((a, b) => a['Hospital Name'].localeCompare(b['Hospital Name']));
-                
-                renderTable(reportData);
+                renderMainList(reportData);
                 setupSearch();
             }
         });
     }
 
-    function renderTable(data) {
-        if (data.length === 0) return;
-        let table = `<table><thead><tr>`;
-        Object.keys(data[0]).forEach(key => { table += `<th>${key}</th>`; });
-        table += `</tr></thead><tbody>`;
-        
-        data.forEach(row => {
-            table += `<tr>`;
-            Object.values(row).forEach(val => { table += `<td>${val || '-'}</td>`; });
-            table += `</tr>`;
-        });
-        table += `</tbody></table>`;
-        document.getElementById('table-container').innerHTML = table;
+    function renderMainList(data) {
+        const listDiv = document.getElementById('main-list');
+        listDiv.innerHTML = data.map((item, index) => `
+            <div class="hospital-list-item" onclick="openCard(${index})">
+                <span>${item['Hospital Name']}</span>
+                <span style="color:#aaa;">❯</span>
+            </div>
+        `).join('');
     }
+
+    function openCard(index) {
+        const item = reportData[index];
+        const cardContent = document.getElementById('cardContent');
+        
+        // Generate HTML for every column in your sheet
+        let detailsHtml = `<div class="card-header"><h3>${item['Hospital Name']}</h3></div>`;
+        for (const [key, value] of Object.entries(item)) {
+            if(key !== 'Hospital Name') {
+                detailsHtml += `
+                    <div class="card-row">
+                        <div class="label">${key}</div>
+                        <div class="value">${value || 'N/A'}</div>
+                    </div>`;
+            }
+        }
+        detailsHtml += `<button class="close-btn" onclick="closeCard()">Close</button>`;
+        
+        cardContent.innerHTML = detailsHtml;
+        document.getElementById('contactCardOverlay').style.display = 'flex';
+
+        // Add a "fake" history state so the BACK button closes the card
+        window.history.pushState({cardOpen: true}, "");
+    }
+
+    function closeCard() {
+        document.getElementById('contactCardOverlay').style.display = 'none';
+    }
+
+    // Close card when phone back button is pressed
+    window.onpopstate = function() {
+        closeCard();
+    };
 
     function setupSearch() {
         const input = document.getElementById('searchInput');
@@ -87,26 +139,20 @@
         input.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             suggBox.innerHTML = '';
-            
             if (val.length > 0) {
-                const matches = reportData.filter(row => 
-                    row['Hospital Name'].toLowerCase().includes(val)
-                );
-
-                // Show up to 5 suggestions
+                const matches = reportData.filter(row => row['Hospital Name'].toLowerCase().includes(val));
                 matches.slice(0, 5).forEach(match => {
                     const div = document.createElement('div');
-                    div.classList.add('suggestion-item');
+                    div.className = 'suggestion-item';
                     div.innerText = match['Hospital Name'];
                     div.onclick = () => {
-                        input.value = match['Hospital Name'];
+                        const originalIndex = reportData.indexOf(match);
+                        openCard(originalIndex);
+                        input.value = '';
                         suggBox.innerHTML = '';
-                        renderTable([match]); // Filter table to that hospital
                     };
                     suggBox.appendChild(div);
                 });
-            } else {
-                renderTable(reportData); // Reset to full list if cleared
             }
         });
     }
